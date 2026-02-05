@@ -1,0 +1,52 @@
+name: Lint
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run ShellCheck
+        run: shellcheck -e SC2244 -e SC2243 neofetch
+
+  line-length:
+    name: Check Line Length
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for lines longer than 100 chars (excluding help text)
+        run: |
+          # Exclude help text lines (around line 5150-5180) from length check
+          if grep -n '.\{102\}' neofetch | grep -v ':515[0-9]:' | grep -v ':516[0-9]:' | grep -v ':517[0-9]:'; then
+            echo "Error: Lines longer than 100 characters found in code"
+            exit 1
+          else
+            echo "All code lines are within 100 characters"
+          fi
+
+  test-run:
+    name: Test Neofetch
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install screenresolution
+
+      - name: Run neofetch
+        run: time ./neofetch --off -v
