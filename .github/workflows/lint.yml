@@ -24,14 +24,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Check for lines longer than 100 chars (excluding help text)
+      - name: Check for lines longer than 100 chars (excluding marked sections)
         run: |
-          # Exclude help text lines (around line 5150-5180) from length check
-          if grep -n '.\{102\}' neofetch | grep -v ':515[0-9]:' | grep -v ':516[0-9]:' | grep -v ':517[0-9]:'; then
+          # Extract lines between ignore markers and check rest of file
+          awk '
+            /shellcheck-line-length-ignore-start/ { ignore=1; next }
+            /shellcheck-line-length-ignore-end/ { ignore=0; next }
+            !ignore && length > 101 { print NR": "$0; found=1 }
+            END { if (found) exit 1 }
+          ' neofetch
+          if [ $? -eq 0 ]; then
+            echo "All code lines are within 100 characters"
+          else
             echo "Error: Lines longer than 100 characters found in code"
             exit 1
-          else
-            echo "All code lines are within 100 characters"
           fi
 
   test-run:
