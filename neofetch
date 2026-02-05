@@ -2305,7 +2305,9 @@ get_cpu() {
                     "Apple A10 Fusion (4) @ 2.34GHz"
                 ;;
                 "iPhone10,"[1-6]): "Apple A11 Bionic (6) @ 2.39GHz" ;;
-                "iPhone11,"[2468] | "iPad11,"[1-4] | "iPad11,"[6-7]): "Apple A12 Bionic (6) @ 2.49GHz" ;;
+                "iPhone11,"[2468] | "iPad11,"[1-4] | "iPad11,"[6-7])
+                    "Apple A12 Bionic (6) @ 2.49GHz"
+                ;;
                 "iPhone12,"[1358]): "Apple A13 Bionic (6) @ 2.65GHz" ;;
                 "iPhone13,"[1-4] | "iPad13,"[1-2]): "Apple A14 Bionic (6) @ 3.00Ghz" ;;
 
@@ -2506,7 +2508,8 @@ get_gpu() {
             gpu_cmd="$(lspci -mm |
                        awk -F '\"|\" \"|\\(' \
                               '/"Display|"3D|"VGA/ {
-                                  a[$0] = $1 " " $3 " " ($(NF-1) ~ /^$|^Device [[:xdigit:]]+$/ ? $4 : $(NF-1))
+                                  device = $(NF-1) ~ /^$|^Device [[:xdigit:]]+$/ ? $4 : $(NF-1)
+                                  a[$0] = $1 " " $3 " " device
                               }
                               END { for (i in a) {
                                   if (!seen[a[i]]++) {
@@ -2706,11 +2709,13 @@ get_memory() {
         "Mac OS X" | "macOS" | "iPhone OS")
             hw_pagesize="$(sysctl -n hw.pagesize)"
             mem_total="$(($(sysctl -n hw.memsize) / 1024 / 1024))"
-            pages_app="$(($(sysctl -n vm.page_pageable_internal_count) - $(sysctl -n vm.page_purgeable_count)))"
+            pages_app="$(($(sysctl -n vm.page_pageable_internal_count) - \
+                           $(sysctl -n vm.page_purgeable_count)))"
             pages_wired="$(vm_stat | awk '/ wired/ { print $4 }')"
             pages_compressed="$(vm_stat | awk '/ occupied/ { printf $5 }')"
             pages_compressed="${pages_compressed:-0}"
-            mem_used="$(((${pages_app} + ${pages_wired//.} + ${pages_compressed//.}) * hw_pagesize / 1024 / 1024))"
+            mem_used="$(((pages_app + ${pages_wired//.} + ${pages_compressed//.}) * \
+                         hw_pagesize / 1024 / 1024))"
         ;;
 
         "BSD" | "MINIX")
@@ -3521,7 +3526,8 @@ END
         ;;
 
         "mintty")
-            term_font="$(awk -F '=' '!/^($|#)/ && /^\\s*Font\\s*=/ {printf $2; exit}' "${HOME}/.minttyrc")"
+            term_font="$(awk -F '=' '!/^($|#)/ && /^\\s*Font\\s*=/ {printf $2; exit}' \
+                         "${HOME}/.minttyrc")"
         ;;
 
         "pantheon"*)
@@ -3904,12 +3910,12 @@ get_local_ip() {
 }
 
 get_public_ip() {
-    if [[ ! -n "$public_ip_host" ]] && type -p dig >/dev/null; then
+    if [[ -z "$public_ip_host" ]] && type -p dig >/dev/null; then
         public_ip="$(dig +time=1 +tries=1 +short myip.opendns.com @resolver1.opendns.com)"
        [[ "$public_ip" =~ ^\; ]] && unset public_ip
     fi
 
-    if [[ ! -n "$public_ip_host" ]] && [[ -z "$public_ip" ]] && type -p drill >/dev/null; then
+    if [[ -z "$public_ip_host" ]] && [[ -z "$public_ip" ]] && type -p drill >/dev/null; then
         public_ip="$(drill myip.opendns.com @resolver1.opendns.com | \
                      awk '/^myip\./ && $3 == "IN" {print $5}')"
     fi
@@ -5141,6 +5147,7 @@ ASCII:
 
                                 NOTE: AIX, Hash, Alpine, AlterLinux, Amazon, Anarchy, Android,
                                 instantOS, Antergos, antiX, \"AOSC OS\", \"AOSC OS/Retro\",
+                                # shellcheck-line-length-ignore-start
                                 Apricity, ArchCraft, ArcoLinux, ArchBox, ARCHlabs, ArchStrike,
                                 XFerience, ArchMerge, Arch, Artix, Arya, Bedrock, Bitrig,
                                 BlackArch, BLAG, BlankOn, BlueLight, Bodhi, bonsai, BSD, BunsenLabs,
@@ -5168,8 +5175,10 @@ ASCII:
                                 Ubuntu-Cinnamon, Ubuntu-Budgie, Ubuntu-GNOME, Ubuntu-MATE,
                                 Ubuntu-Studio, Ubuntu, Univention, Venom, Void, VNux, LangitKetujuh, semc,
                                 Obarun, windows10, Windows7, Xubuntu, Zorin, and IRIX have ascii logos.
+                                # shellcheck-line-length-ignore-end
 
-                                NOTE: Arch, Ubuntu, Redhat, Fedora and Dragonfly have 'old' logo variants.
+                                NOTE: Arch, Ubuntu, Redhat, Fedora and Dragonfly have 'old'
+                                logo variants.
 
                                 NOTE: Use '{distro name}_old' to use the old logos.
 
